@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Pwn Checker by Simon</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script type="text/javascript">
+
+/**
+ * Query the pwnedpasswords API for checksums beginning with a 5 char prefix
+ */
+ function getHashes(prefix) {
+
+  return new Promise(async (resolve) => {
+    let res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
+
+    if (res.status === 200) {
+      res = await res.text();
+      res = res.split('\n');
+      res = res.map(e => e.split(':'));
+      resolve(res);
+    }
+  });
+}
+
+/**
+ * Convert ArrayBuffer to an hexadecimal string
+ */
+function hexString(data) {
+  return [...new Uint8Array(data)].map(v => v.toString(16).padStart(2, '0').toLocaleUpperCase()).join('');
+}
+
+async function checksum(word) {
+
+  // Because digest only accepts ArrayBuffer provided by TextEncoder
+  const pass = new TextEncoder('utf-8').encode(word);
+
+  // Convert input password to a SHA-1 hash right away
+  const data = await crypto.subtle.digest('SHA-1', pass);
+
+  // Convert back to string for easier manipulation
+  return hexString(data);
+}
+
+/**
+ * Handle the form data and check if given password has match in database
+ */
+async function doCheck(form) {
+
+  const hash = await checksum(form.password.value);
+  form.password.value = '';
+
+  const prefix = hash.substring(0, 5);
+  const suffix = hash.substring(5);
+  const db = await getHashes(prefix);
+  const match = db.find(e => e[0] === suffix);
+
+  if (match) {
+    form.count.value = match[1];
+  } else {
+    form.count.value = "no match found!";
+  }
+
+  return false;
+}
+
+/**
+ * Sanity check - validate the functions output against hardcoded values
+ */
+async function sanity() {
+
+  const resA = await hexString([0xDE, 0xAD, 0xBE, 0xEF]);
+  const resB = await checksum('foobar');
+
+  if (resA !== 'DEADBEEF') {
+    alert(`unexpected result for hexString: ${resA}`);
+  }
+
+  if (resB !== '8843D7F92416211DE9EBB963FF4CE28125932878') {
+    alert(`unexpected result for checksum: ${resB}`);
+  }
+}
+
+sanity();
+
+  </script>
+</head>
+<body>
+  <a href="https://haveibeenpwned.com/Passwords"><h3>Pwned Passwords Checker</h3></a>
+  <form onsubmit="doCheck(this); return false;">
+    <label>password</label>
+    <input id="password" type="password" autocomplete="none">
+    <input type="submit" value="Check">
+    <input type="text" id="count" disabled="true">
+  </form>
+</body>
+</html>
