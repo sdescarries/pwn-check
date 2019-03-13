@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Pwn Checker</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script type="text/javascript">
+
+async function getHashes(prefix) {
+
+}
+
+/**
+ * Convert ArrayBuffer to an hexadecimal string
+ */
+function hexString(data) {
+  const inp = new Uint8Array(data);
+  const out = inp.map(v => v.toString(16).padStart(2, '0'));
+  return out.join('');
+}
+
+/**
+ * Handle the form data and check if given password has match in database
+ */
+async function doCheck(form) {
+
+  // Because digest only accepts ArrayBuffer provided by TextEncoder
+  const pass = new TextEncoder('utf-8').encode(form.password.value);
+
+  // Convert input password to a SHA-1 hash right away
+  const data = await crypto.subtle.digest('SHA-1', pass);
+
+  // Convert back to string for easier manipulation
+  const hash = hexString(data);
+
+  console.log({data, hash});
+
+  return false;
+}
+
+  </script>
+</head>
+<body>
+  <form onsubmit="doCheck(this); return false;">
+    <input id="password" type="password" autocomplete="new-password">
+    <input type="submit" value="Check">
+  </form>
+</body>
+</html>
